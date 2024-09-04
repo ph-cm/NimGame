@@ -16,6 +16,11 @@ int* bestMove(int *state, int size, int maximizingPlayer);
 //initialize the game
 void initGame(int n, int m, int *state);
 
+//IMPLEMENTAÇÃO DO ALGORITMO DE BUSCA
+int calculateSum(int *state, int size);
+
+void findBestMove(int *state, int size, int *bestPile, int *bestStick);
+
 int main()
 {
     int n, m;
@@ -174,5 +179,47 @@ void initGame(int n, int m, int *state)
     {
         state[i % m]++;
     }
+}
+
+int calculateSum(int *state, int size)
+{
+    int sum = 0;
+    for(int i = 0; i < size; i++)
+    {
+        sum ^= state[i];
+    }
+    return sum;
+}
+
+void findBestMove(int *state, int size, int *bestPile, int *bestStick)
+{
+    int sum = calculateSum(state, size);
+
+    if(sum == 0)
+    {
+        for(int i = 0; i < size; i++)
+        {
+            if(state[i] > 0)
+            {
+                *bestPile = i;
+                *bestStick = 1;
+                return;
+            }
+        }
+    }
+    for(int i = 0; i < size; i++)
+    {
+        if(state[i] > 0)
+        {
+            int target = state[i] ^sum;
+            if(target < state[i])
+            {
+                *bestPile = i;
+                *bestStick = state[i] = target;
+                return;
+            }
+        }
+    }
+
 }
 
