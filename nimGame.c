@@ -1,20 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <limits.h>
 
 //check if the game is over
 int terminal(int *state, int size);
 
-//sreach behoud the sucessors which one is the best
-void getSucessor(int *state, int size, int **sucessor, int *numSucessor);
+int utility(int *state, int size);
 
-int utility(int *state, int size, int maximizingPlayer);
-
-int minimax(int *state, int size, int depth, int a, int b, int maximizingPlayer);
-//calc the best move per round
-int* bestMove(int *state, int size, int maximizingPlayer);
-//initialize the game
 void initGame(int n, int m, int *state);
+
+void displayState(int *state, int size);
+
+void playerMove(int *state, int size);
 
 //IMPLEMENTAÇÃO DO ALGORITMO DE BUSCA
 int calculateSum(int *state, int size);
@@ -34,31 +30,29 @@ int main()
 
     initGame(n, m, state);
 
-    int size = m;
     int currentPlayer = 1;
 
-    while(!terminal(state, size))
+    while(!terminal(state, m))
     {
-        printf("Current state: ");
-        for(int i = 0; i < size; i++)
+        displayState(state, m);
+        printf("Player %d's turn\n", currentPlayer);
+
+        if(currentPlayer == 1)
         {
-            printf("[ %d ]", state[i]);
+            playerMove(state, m);
         }
-        printf("\n");
-        int *nextState = bestMove(state, size, currentPlayer);
-        for(int i = 0; i < size; i++)
+        else
         {
-            state[i] = nextState[i];
+            int bestPile, bestStick;
+            findBestMove(state, m, &bestPile, &bestStick);
+            printf("Computer removes %d sticks from pile %d\n", bestStick, bestPile);
+            state[bestPile] -= bestStick;
         }
-        currentPlayer = !currentPlayer;
+        currentPlayer = 3 - currentPlayer;
     }
-    printf("Game Over!\n");
-    printf("Final state: ");
-    for(int i = 0; i < size; i++)
-    {
-        printf("[ %d ]", state[i]);
-    }
-    printf("\n");
+    printf("Game over! Final state: ");
+    displayState(state, m);
+    printf("Player %d wins!\n", 3 - currentPlayer);
 
     return 0;
 }
@@ -71,93 +65,6 @@ int terminal(int *state, int size)
     }
         return 1;
     }
-
-void getSucessor(int *state, int size, int **sucessor, int *numSucessor)
-{
-    *numSucessor = 0;
-    for(int i = 0; i < size; i++)
-    {
-        for(int j = 1; j <= state[i]; j++)
-        {
-            int *newState = (int *)malloc(size * sizeof(int));
-            for (int k = 0; k < size; k++)
-            {
-                newState[k] = state[k];
-            }
-            newState[i] -= j;
-            sucessor[(*numSucessor)++] = newState;
-        }
-    }
-}
-
-int utility(int *state, int size, int maximizingPlayer)
-{
-    return maximizingPlayer ? -1 : 1;
-}
-
-int minimax(int *state, int size, int depth, int a, int b, int maximizingPlayer)
-{
-    if (depth == 0 || terminal(state, size))
-    {
-        return utility(state, size, maximizingPlayer);
-    }
-
-    if(maximizingPlayer)
-    {
-        int maxEval = INT_MIN;
-        int *sucessor[100];
-        int numSucessor;
-        getSucessor(state, size, sucessor, &numSucessor);
-        for(int i = 0; i < numSucessor; i++)
-        {
-            int eval = minimax(sucessor[i], size, depth - 1, a, b, 0);
-            maxEval = (eval > maxEval) ? eval : maxEval;
-            a = (a > eval) ? a : eval;
-            if(b <= a)
-            {
-                break;
-            }
-        }
-        return maxEval;
-    }
-    else
-    {
-        int minEval = INT_MAX;
-        int *sucessor[100];
-        int numSucessor;
-        getSucessor(state, size, sucessor, &numSucessor);
-        for(int i = 0; i < numSucessor; i++)
-        {
-            int eval = minimax(sucessor[i], size, depth - 1, a, b, 1);
-            minEval = (eval < minEval) ? eval : minEval;
-            b = (b < eval) ? b : eval;
-            if (b <= a)
-            {
-                break;
-            }
-        }
-        return minEval;
-    }
-}
-
-int* bestMove(int *state, int size, int maximizingPlayer)
-{
-    int bestValue = maximizingPlayer ? INT_MIN : INT_MAX;
-    int *bestMove = NULL;
-    int *sucessor[100];
-    int numSucessor;
-    getSucessor(state, size, sucessor, &numSucessor);
-    for(int i = 0; i < numSucessor; i++)
-    {
-        int value = minimax(sucessor[i], size, size, INT_MIN, INT_MAX, !maximizingPlayer);
-        if((maximizingPlayer && value > bestValue) || (!maximizingPlayer && value < bestValue))
-        {
-           bestValue = value;
-           bestMove = sucessor[i];
-        }
-    }
-    return bestMove;
-}
 
 void initGame(int n, int m, int *state)
 {
@@ -175,9 +82,48 @@ void initGame(int n, int m, int *state)
     {
         state[i] = 1;
     }
-    for(int i = 0; i < n - m; i++)
+    for(int i = 0; i < (n - m); i++)
     {
         state[i % m]++;
+    }
+}
+
+void displayState(int *state, int size)
+{
+    printf("Current state: ");
+    for(int i = 0; i < size; i++)
+    {
+        printf("[ %d ]", state[i]);
+    }
+    printf("\n");
+}
+
+void playerMove(int *state, int size)
+{
+    int pile, stick;
+
+    while(1)
+    {
+        printf("Choose a pile (1-%d): ", size);
+        scanf("%d", &pile);
+        pile--;
+
+        if(pile < 0 || pile >= size|| state[pile] == 0)
+        {
+            printf("Invalid choice. Try again.\n");
+            continue;
+        }
+
+        printf("Choose the number of stick to remove (1-%d): ", state[pile]);
+        scanf("%d", &stick);
+
+        if(stick < 1 || stick > state[pile])
+        {
+            printf("Invalid number of stick. Try again.\n");
+            continue;
+        }
+        state[pile] -= stick;
+        break;
     }
 }
 
